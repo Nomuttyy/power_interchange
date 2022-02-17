@@ -13,16 +13,29 @@ discharge_power_LIMIT = 10
 
 CHARGE_LIMIT = 10
 CAPACITY = 100
+SURPLUS_PRICE = 10
+GRIDPOWER_PRICE = 18
 
 
 if demand >= pv:
+    demand_remain = demand - pv
     "発電量を供給"
+    if demand_remain > battery_remain:
+        demand_remain = demand_remain - battery_remain
+        battery_remain = 0
+    else:
+        battery_remain = battery_remain - demand_remain
+        demand_remain = 0
     "蓄電池放電による供給"
-    if demand > 0:
+    if demand_remain > 0:
         "電力融通リクエスト"
         if "購入許可":
+            money -= demand_remain * SURPLUS_PRICE #部分的融通の処理どうしよう
+            demand_remain = 0
             "電力もらって供給"
-    if demand > 0:
+    if demand_remain > 0:
+        money -= demand_remain * GRIDPOWER_PRICE
+        demand_remain = 0
         "系統から電力購入"
 else:
     "発電量で消費量に供給"
