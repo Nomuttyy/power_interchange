@@ -1,4 +1,5 @@
 import csv
+import pandas as pd
 
 money_pertner:int = 0
 battery_pertner:float = 30
@@ -24,16 +25,19 @@ GRIDPOWER_SELL = 8
 
 class Simulate():
     def __init__(self):
+        self.pvdf = pd.read_csv('data/PV.csv')
+        self.demanddf = pd.read_csv('data/pattern2.csv')
+        self.demanddf_pertner = pd.read_csv('data/pattern3.csv')
         self.money_pertner:int = 0
         self.battery_pertner:float = 30
-        self.pv_pertner:float = 10
+        self.pv_pertner:float = self.pvdf.at[self.idx, 'PV']
         self.discharge_power_pertner:float = 10
-        self.demand_pertner = 10
+        self.demand_pertner = self.demanddf_pertner.at[self.idx, 'demand']
         self.money:float = 0
         self.battery:float = 35 #バッテリー残量
-        self.pv:float = 80 #発電量
+        self.pv:float = self.pvdf.at[self.idx, 'PV'] #発電量
         self.discharge_power:float = 30
-        self.demand = 20
+        self.demand = self.demanddf.at[self.idx, 'demand']
         self.discharge_power_LIMIT = 10
         self.CHARGE_LIMIT = 10
         self.CAPACITY = 100
@@ -46,6 +50,10 @@ class Simulate():
 
 
     def onestep(self):
+        self.pv_pertner:float = self.pvdf.at[self.idx, 'PV']
+        self.demand_pertner = self.demanddf_pertner.at[self.idx, 'demand']
+        self.pv:float = self.pvdf.at[self.idx, 'PV']
+        self.demand = self.demanddf.at[self.idx, 'demand']
         if self.demand >= self.pv:
             self.demand = self.demand - self.pv
             self.pv = 0
@@ -107,7 +115,7 @@ class Simulate():
         if self.pv > 0:
             self.money += self.pv * self.GRIDPOWER_SELL
             self.pv = 0
-        # print(self.pv, self.demand, self.battery, self.money, self.money_pertner)
+        print(self.pv, self.demand, self.battery, self.money, self.money_pertner)
         self.data.append([self.idx, self.pv, self.demand, self.battery, self.money])
         self.idx += 1 
     
@@ -124,3 +132,6 @@ for i in range(100):
     simu.onestep()
 simu.write('result.csv')
 # data.insert(0, ['pv', 'demand', 'money'])
+
+# PVとdemandのデータ作る
+# 変数更新fix
