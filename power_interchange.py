@@ -25,17 +25,18 @@ GRIDPOWER_SELL = 8
 
 class Simulate():
     def __init__(self):
+        self.idx = 0
         self.pvdf = pd.read_csv('data/PV.csv')
         self.demanddf = pd.read_csv('data/pattern2.csv')
         self.demanddf_pertner = pd.read_csv('data/pattern3.csv')
         self.money_pertner:int = 0
         self.battery_pertner:float = 30
-        self.pv_pertner:float = self.pvdf.at[self.idx, 'PV']
+        self.pv_pertner:float = self.pvdf.at[self.idx, 'PV'] / 1.75 /2
         self.discharge_power_pertner:float = 10
         self.demand_pertner = self.demanddf_pertner.at[self.idx, 'demand']
         self.money:float = 0
         self.battery:float = 35 #バッテリー残量
-        self.pv:float = self.pvdf.at[self.idx, 'PV'] #発電量
+        self.pv:float = self.pvdf.at[self.idx, 'PV'] / 1.75 /2#発電量
         self.discharge_power:float = 30
         self.demand = self.demanddf.at[self.idx, 'demand']
         self.discharge_power_LIMIT = 10
@@ -44,12 +45,12 @@ class Simulate():
         self.SURPLUS_PRICE = 10
         self.GRIDPOWER_BUY = 18
         self.GRIDPOWER_SELL = 8
-        self.idx = 0
         self.header = ['index', 'pv', 'demand', 'battery', 'money']
         self.data = []
 
 
     def onestep(self):
+        self.idx = self.idx
         self.pv_pertner:float = self.pvdf.at[self.idx, 'PV']
         self.demand_pertner = self.demanddf_pertner.at[self.idx, 'demand']
         self.pv:float = self.pvdf.at[self.idx, 'PV']
@@ -85,15 +86,23 @@ class Simulate():
             if self.pv > 0:
                 if self.battery > 0:
                     "蓄電池に充電"
-                    if self.battery >= self.pv:
-                        self.battery = self.battery - self.pv
-                        self.pv = 0
+                    if self.CAPACITY - self.battery >= self.pv:
+                        if self.pv > self.CHARGE_LIMIT:
+                            self.pv -= self.CHARGE_LIMIT
+                            self.battery += self.CHARGE_LIMIT
+                        else:
+                            self.battery += self.pv
+                            self.pv = 0
                     else:
-                        self.battery = self.CHARGE_LIMIT
-                        self.pv -= self.CHARGE_LIMIT - self.battery
+                        if self.pv > self.CHARGE_LIMIT:
+                            self.pv -= self.CHARGE_LIMIT - (self.CAPACITY - self.battery)
+                            self.battery = self.CAPACITY
+                        else:
+                            self.pv -= self.CAPACITY - self.battery
+                            self.battery = self.CAPACITY
                     if self.pv > 0:
                         "電力売却リクエスト"
-                        if self.CHARGE_LIMIT - self.battery_pertner > self.pv:#売却許可
+                        if self.CAPACITY - self.battery_pertner > self.pv:#売却許可
                             self.battery_pertner += self.pv
                             self.money_pertner -= self.pv * self.SURPLUS_PRICE
                             self.money += self.pv * self.SURPLUS_PRICE
@@ -115,7 +124,7 @@ class Simulate():
         if self.pv > 0:
             self.money += self.pv * self.GRIDPOWER_SELL
             self.pv = 0
-        print(self.pv, self.demand, self.battery, self.money, self.money_pertner)
+        print(self.pv, self.demand, self.battery, self.money, self.money_pertner) #発電量需要量(前の)充電量放電量融通量etc
         self.data.append([self.idx, self.pv, self.demand, self.battery, self.money])
         self.idx += 1 
     
@@ -128,7 +137,7 @@ class Simulate():
 
 
 simu = Simulate()
-for i in range(100):
+for i in range(300):
     simu.onestep()
 simu.write('result.csv')
 # data.insert(0, ['pv', 'demand', 'money'])
